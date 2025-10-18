@@ -22,9 +22,9 @@ class Ticket {
       if (images && images.length > 0) {
         for (let i = 0; i < images.length; i++) {
           await client.query(
-            `INSERT INTO ticket_images (ticket_id, image_path, image_order, file_size)
-             VALUES ($1, $2, $3, $4)`,
-            [ticket.id, images[i].path, i + 1, images[i].size]
+            `INSERT INTO ticket_images (ticket_id, image_path, image_order)
+             VALUES ($1, $2, $3)`,
+            [ticket.id, images[i].path, i + 1]
           );
         }
       }
