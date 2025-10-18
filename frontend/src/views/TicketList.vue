@@ -101,9 +101,21 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
+            <!-- 管理员和客服显示编辑按钮 -->
             <el-button
+              v-if="authStore.isAdmin || authStore.isAgent"
+              text
+              type="primary"
+              size="small"
+              @click.stop="viewDetail(row.id)"
+            >
+              编辑
+            </el-button>
+            <!-- 观察者只能查看 -->
+            <el-button
+              v-else
               text
               type="primary"
               size="small"
@@ -111,15 +123,7 @@
             >
               查看
             </el-button>
-            <el-button
-              v-if="authStore.isAdmin || authStore.isAgent"
-              text
-              type="warning"
-              size="small"
-              @click.stop="handleEdit(row)"
-            >
-              编辑
-            </el-button>
+            <!-- 仅管理员可以删除 -->
             <el-button
               v-if="authStore.isAdmin"
               text
@@ -146,47 +150,11 @@
         />
       </div>
     </el-card>
-
-    <!-- 编辑对话框 -->
-    <el-dialog
-      v-model="editDialogVisible"
-      title="编辑工单"
-      width="600px"
-      @close="editDialogVisible = false"
-    >
-      <el-form :model="editForm" label-width="80px">
-        <el-form-item label="工单标题">
-          <el-input v-model="editForm.title" placeholder="请输入标题" />
-        </el-form-item>
-
-        <el-form-item label="状态">
-          <el-select v-model="editForm.status" placeholder="选择状态" style="width: 100%">
-            <el-option label="待处理" value="open" />
-            <el-option label="处理中" value="in_progress" />
-            <el-option label="已解决" value="resolved" />
-            <el-option label="已关闭" value="closed" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item label="优先级">
-          <el-select v-model="editForm.priority" placeholder="选择优先级" style="width: 100%">
-            <el-option label="低" value="low" />
-            <el-option label="中" value="mid" />
-            <el-option label="高" value="high" />
-          </el-select>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveEdit">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -203,15 +171,6 @@ import {
 const router = useRouter()
 const ticketStore = useTicketStore()
 const authStore = useAuthStore()
-
-// 编辑对话框
-const editDialogVisible = ref(false)
-const editForm = reactive({
-  id: 0,
-  title: '',
-  status: '',
-  priority: '',
-})
 
 const filterForm = reactive({
   q: '',
@@ -249,32 +208,6 @@ const handleRowClick = (row: any) => {
 
 const viewDetail = (id: number) => {
   router.push(`/tickets/${id}`)
-}
-
-const handleEdit = (row: any) => {
-  editForm.id = row.id
-  editForm.title = row.title
-  editForm.status = row.status
-  editForm.priority = row.priority
-  editDialogVisible.value = true
-}
-
-const handleSaveEdit = async () => {
-  try {
-    const success = await ticketStore.updateTicket(editForm.id, {
-      title: editForm.title,
-      status: editForm.status as any,
-      priority: editForm.priority as any,
-    })
-
-    if (success) {
-      ElMessage.success('更新成功')
-      editDialogVisible.value = false
-      ticketStore.fetchTickets()
-    }
-  } catch (error) {
-    ElMessage.error('更新失败')
-  }
 }
 
 const handleDelete = async (row: any) => {
