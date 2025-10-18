@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ticketController = require('../controllers/ticketController');
+const ticketController = require('../controllers/ticketController_v2'); // 使用V2版本
 const { authenticate } = require('../middleware/auth');
 
 // 获取统计摘要

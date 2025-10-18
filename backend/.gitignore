@@ -3,3 +3,9 @@ node_modules/
 npm-debug.log*
 .DS_Store
 
+# 上传的文件（保留目录结构）
+uploads/images/*
+uploads/reports/*
+!uploads/images/.gitkeep
+!uploads/reports/.gitkeep
+

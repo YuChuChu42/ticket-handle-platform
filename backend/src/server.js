@@ -10,7 +10,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // 导入路由
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
-const ticketRoutes = require('./routes/ticket');
+const ticketRoutes = require('./routes/ticket_v2'); // 使用V2版本
 const metricsRoutes = require('./routes/metrics');
 
 const app = express();
@@ -31,6 +31,9 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// 静态文件服务（用于访问上传的图片和PDF）
+app.use('/uploads', express.static('uploads'));
 
 // 通用限流
 app.use('/api', generalLimiter);
