@@ -52,8 +52,47 @@ const authorize = (...allowedRoles) => {
   };
 };
 
+// 检查是否是工单创建者
+const isTicketOwner = async (req, res, next) => {
+  try {
+    const ticketId = req.params.id;
+    const { query } = require('../config/database');
+    
+    const result = await query(
+      'SELECT reporter_id FROM tickets WHERE id = $1',
+      [ticketId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '工单不存在',
+      });
+    }
+
+    const ticket = result.rows[0];
+    
+    // 管理员或创建者可以访问
+    if (req.user.role === 'admin' || req.user.id === ticket.reporter_id) {
+      next();
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: '只能操作自己的工单',
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: '权限验证失败',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   authenticate,
   authorize,
+  isTicketOwner,
 };
 
