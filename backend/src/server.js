@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet()); // 安全头
 app.use(compression()); // gzip 压缩
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://localhost:5174'],
   credentials: true,
 }));
 app.use(express.json()); // 解析 JSON
