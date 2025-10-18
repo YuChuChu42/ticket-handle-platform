@@ -231,6 +231,14 @@ exports.deleteUser = async (req, res, next) => {
       });
     }
     
+    // 不能删除管理员账户
+    if (existingUser.rows[0].role === 'admin') {
+      return res.status(400).json({
+        success: false,
+        message: '不能删除管理员账户'
+      });
+    }
+    
     // 检查是否有相关的工单
     const ticketCheck = await query(`
       SELECT COUNT(*) FROM tickets 

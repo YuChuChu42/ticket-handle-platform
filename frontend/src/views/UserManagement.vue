@@ -61,7 +61,7 @@
             size="small" 
             type="danger" 
             @click="deleteUser(row)"
-            :disabled="row.id === currentUser.id"
+            :disabled="row.id === currentUser.id || row.role === 'admin'"
           >
             删除
           </el-button>
@@ -299,6 +299,17 @@ const editUser = (user: User) => {
 
 // 删除用户
 const deleteUser = async (user: User) => {
+  // 检查是否可以删除
+  if (user.id === currentUser.value.id) {
+    ElMessage.warning('不能删除自己的账户')
+    return
+  }
+  
+  if (user.role === 'admin') {
+    ElMessage.warning('不能删除管理员账户')
+    return
+  }
+  
   try {
     await ElMessageBox.confirm(
       `确定要删除用户 "${user.full_name}" 吗？此操作不可恢复。`,
