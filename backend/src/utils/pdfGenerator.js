@@ -36,12 +36,15 @@ async function generateTicketReport(ticket, reporter, technician) {
 
       // 注册中文字体
       const fontPath = process.platform === 'darwin' 
-        ? '/System/Library/Fonts/PingFang.ttc'
+        ? '/System/Library/Fonts/AppleSDGothicNeo.ttc'
         : 'C:/Windows/Fonts/msyh.ttc';
       
       const hasChineseFont = fs.existsSync(fontPath);
       if (hasChineseFont) {
         doc.registerFont('ChineseFont', fontPath);
+        console.log('中文字体已注册:', fontPath);
+      } else {
+        console.log('中文字体文件不存在:', fontPath);
       }
 
       // 管道输出到文件
