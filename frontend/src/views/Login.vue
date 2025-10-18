@@ -46,13 +46,6 @@
           </el-button>
         </el-form-item>
       </el-form>
-
-      <div class="test-accounts">
-        <el-divider>测试账号</el-divider>
-        <p><strong>管理员：</strong>admin / password123</p>
-        <p><strong>技术人员：</strong>tech1 / password123</p>
-        <p><strong>负责人：</strong>reporter1 / password123</p>
-      </div>
     </el-card>
   </div>
 </template>
@@ -143,23 +136,6 @@ const handleLogin = async () => {
   margin: 0;
   color: #909399;
   font-size: 14px;
-}
-
-.test-accounts {
-  margin-top: 20px;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-  font-size: 13px;
-  color: #606266;
-}
-
-.test-accounts p {
-  margin: 8px 0;
-}
-
-.test-accounts strong {
-  color: #303133;
 }
 </style>
 
