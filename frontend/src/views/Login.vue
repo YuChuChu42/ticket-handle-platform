@@ -50,8 +50,8 @@
       <div class="test-accounts">
         <el-divider>测试账号</el-divider>
         <p><strong>管理员：</strong>admin / password123</p>
-        <p><strong>客服：</strong>agent1 / password123</p>
-        <p><strong>观察者：</strong>viewer / password123</p>
+        <p><strong>技术人员：</strong>tech1 / password123</p>
+        <p><strong>负责人：</strong>reporter1 / password123</p>
       </div>
     </el-card>
   </div>
