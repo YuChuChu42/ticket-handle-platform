@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController_v2');
-const authMiddleware = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 // 所有路由都需要管理员权限
-router.use(authMiddleware);
+router.use(authenticate);
 router.use((req, res, next) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({
