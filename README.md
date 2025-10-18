@@ -1,196 +1,161 @@
-# 智链工单 & 轻量运营看板
+# 智链工单管理系统
 
-面向中小团队的轻量工单平台：支持登录与基础 RBAC、工单的创建/分派/状态流转、简单统计看板。
+企业级工单管理平台，支持工单创建/分派/处理、多角色权限控制、实时数据看板等功能。基于Vue3 + Express + PostgreSQL构建的全栈应用。
 
-## 技术栈
+## ✨ 核心特性
+
+- 🔐 **JWT双Token认证** - Access Token + Refresh Token自动刷新机制
+- 🎯 **RBAC权限控制** - 管理员、技术人员、客户方负责人三种角色权限
+- 📊 **实时数据看板** - ECharts可视化展示工单趋势和状态分布
+- 💾 **离线草稿保存** - IndexedDB + 防抖机制，避免数据丢失
+- 📱 **PWA离线支持** - Service Worker缓存，弱网环境可用
+- 🎨 **组件化开发** - 图片上传、表单验证等可复用组件
+- ⚡ **性能优化** - 路由懒加载、代码分割、TypeScript严格模式
+
+## 🛠️ 技术栈
 
 ### 前端
-- Vue 3 + TypeScript
-- Vite 构建工具
-- Pinia 状态管理
-- Vue Router 路由
-- Axios HTTP 客户端
-- Element Plus UI 组件库
-- ECharts 数据可视化
-- IndexedDB 离线草稿
-- Service Worker (PWA)
-- ESLint/Prettier 代码规范
-- Vitest 单元测试
+- **框架**: Vue 3 + TypeScript
+- **构建**: Vite
+- **状态管理**: Pinia
+- **路由**: Vue Router
+- **UI组件**: Element Plus
+- **图表**: ECharts
+- **HTTP**: Axios
+- **离线存储**: IndexedDB
+- **PWA**: Service Worker
 
 ### 后端
-- Node.js + Express
-- PostgreSQL 数据库
-- JWT 认证
-- CORS 跨域支持
+- **运行时**: Node.js
+- **框架**: Express
+- **数据库**: PostgreSQL
+- **认证**: JWT
+- **文件上传**: Multer
+- **安全**: Helmet + CORS
 
-## 项目结构
+## 🚀 快速开始
 
-```
-project/
-├── frontend/         # Vue3 前端项目
-├── backend/          # Express 后端项目
-└── database/         # 数据库脚本
-```
+### 环境要求
+- Node.js >= 16.0.0
+- PostgreSQL >= 12.0
+- npm >= 8.0.0
 
-## 快速开始
-
-> 📖 **详细部署指南**：请查看 [SETUP.md](./SETUP.md) 获取完整的分步部署说明
-
-### 1. 数据库设置
-
+### 1. 克隆项目
 ```bash
-# 使用 pgAdmin4 或 psql 创建数据库
+git clone https://github.com/YuChuChu42/ticket-handle-platform.git
+cd ticket-handle-platform
+```
+
+### 2. 数据库设置
+```bash
+# 创建数据库
 createdb ticket_system
 
-# 执行初始化脚本
-psql -U postgres -d ticket_system -f database/schema.sql
-psql -U postgres -d ticket_system -f database/seed.sql
+# 导入数据库结构
+psql -U postgres -d ticket_system -f database/schema_v3.sql
 ```
 
-### 2. 后端启动
-
+### 3. 后端启动
 ```bash
 cd backend
 npm install
-cp env.example .env  # 配置环境变量（修改数据库配置）
-npm run init-db      # 初始化数据库密码
-npm run dev          # 启动开发服务器
+cp .env.example .env  # 配置数据库连接
+npm run dev
 ```
 
-**验证后端**：访问 http://localhost:3000/health
-
-### 3. 前端启动
-
+### 4. 前端启动
 ```bash
 cd frontend
 npm install
-cp env.example .env  # 配置API地址
-npm run dev          # 启动开发服务器
+npm run dev
 ```
 
-**访问系统**：http://localhost:5173
+访问 http://localhost:5173 开始使用
 
-### 4. 测试账号
+## 👥 测试账号
 
-| 角色 | 用户名 | 密码 | 权限 |
-|------|--------|------|------|
-| 管理员 | admin | password123 | 所有权限 |
-| 客服 | agent1 | password123 | 创建/编辑工单 |
-| 观察者 | viewer | password123 | 只读 |
+| 角色 | 用户名 | 密码 | 权限说明 |
+|------|--------|------|----------|
+| 管理员 | admin | password | 所有权限，可分配工单、管理用户 |
+| 技术人员 | tech1 | password | 处理工单、更新状态、生成报告 |
+| 客户方负责人 | reporter1 | password | 创建工单、查看工单、修改优先级 |
 
-## 功能特性
+## 📁 项目结构
 
-- ✅ JWT 登录与自动令牌刷新
-- ✅ 基于角色的访问控制 (RBAC)
-- ✅ 工单增删改查与状态流转
-- ✅ 工单分派与评论
-- ✅ ECharts 数据可视化看板
-- ✅ PWA 离线支持
-- ✅ IndexedDB 草稿自动保存
-- ✅ 移动端响应式适配
-- ✅ 代码分割与懒加载
+```
+project/
+├── frontend/              # Vue3 前端项目
+│   ├── src/
+│   │   ├── components/    # 可复用组件
+│   │   ├── views/        # 页面组件
+│   │   ├── stores/      # Pinia状态管理
+│   │   ├── router/      # 路由配置
+│   │   ├── api/         # API接口
+│   │   └── utils/       # 工具函数
+├── backend/              # Express 后端项目
+│   ├── src/
+│   │   ├── controllers/ # 控制器
+│   │   ├── models/      # 数据模型
+│   │   ├── routes/      # 路由定义
+│   │   ├── middleware/  # 中间件
+│   │   └── config/      # 配置文件
+└── database/            # 数据库脚本
+    └── schema_v3.sql   # 数据库结构
+```
 
-## 核心亮点
+## 🔧 核心功能
 
-1. **请求层与权限** - Axios 拦截器、401 自动刷新、路由守卫
-2. **性能优化** - 路由懒加载、骨架屏、gzip 压缩
-3. **数据可视化** - 实时趋势图与统计卡片
-4. **离线友好** - PWA 缓存与 IndexedDB 草稿
-5. **代码质量** - ESLint/Prettier 规范、Vitest 测试
+### 权限管理
+- 三层权限控制：路由守卫 + API中间件 + 按钮级权限
+- JWT双Token认证，自动刷新过期令牌
+- 基于角色的访问控制（RBAC）
 
-## 项目截图
-
-### 登录页面
-- 支持多角色登录
-- 表单验证
-- 响应式设计
+### 工单管理
+- 工单创建：支持标题、描述、地点、联系方式、图片上传
+- 工单分派：管理员可分配工单给技术人员
+- 状态流转：待处理 → 处理中 → 已解决 → 已关闭
+- 草稿保存：IndexedDB自动保存，防抖1秒
 
 ### 数据看板
-- 统计卡片（今日新增、待处理、处理中、已解决）
-- ECharts 趋势图（近7天数据）
-- 实时数据刷新
+- 实时统计：今日新增、待处理、处理中、已解决工单数量
+- 趋势图表：近7天工单创建和解决趋势
+- 角色权限：管理员和技术人员可查看，客户方负责人不可见
 
-### 工单列表
-- 搜索功能（标题/描述）
-- 状态筛选（待处理/处理中/已解决/已关闭）
-- 优先级筛选（低/中/高）
-- 分页显示
+### 用户体验
+- 响应式设计：支持PC、平板、手机多端访问
+- PWA支持：离线缓存，弱网环境可用
+- 组件化：图片上传、表单验证等可复用组件
 
-### 工单详情
-- 完整工单信息
-- 评论功能
-- 状态更新（权限控制）
-- 实时刷新
+## 📈 技术亮点
 
-### 工单创建
-- 表单验证
-- IndexedDB 草稿自动保存（3秒防抖）
-- 草稿恢复提示
+1. **前端架构**：Pinia状态管理 + TypeScript严格模式 + 组件化开发
+2. **性能优化**：路由懒加载 + 代码分割 + 按需引入
+3. **离线能力**：IndexedDB草稿保存 + Service Worker缓存
+4. **权限控制**：三层权限体系 + JWT双Token认证
+5. **工程化**：ESLint + Prettier + Git Hooks代码规范
 
-## 技术亮点
+## 📝 开发规范
 
-### 前端
+- TypeScript严格模式开发
+- ESLint + Prettier代码格式化
+- Git分支管理：feature/bugfix/hotfix
+- 组件命名：PascalCase
+- 文件命名：kebab-case
+- API接口：RESTful风格
 
-1. **Axios 拦截器** - 401 自动刷新 Token，无感知续期
-2. **路由守卫** - 基于角色的权限控制（admin/agent/viewer）
-3. **状态管理** - Pinia 模块化管理（auth/ticket/metrics）
-4. **PWA 支持** - Service Worker 缓存，离线可用
-5. **IndexedDB** - 工单草稿自动保存，防止数据丢失
-6. **代码分割** - 路由懒加载 + vendor/echarts 分包
-7. **性能优化** - Gzip 压缩，首屏 JS < 650KB
+## 🤝 贡献指南
 
-### 后端
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
 
-1. **JWT 双令牌** - Access Token (15分钟) + Refresh Token (7天)
-2. **请求限流** - Express Rate Limit 防止暴力攻击
-3. **安全防护** - Helmet 安全头 + CORS 跨域限制
-4. **数据库优化** - 连接池 + 索引优化 + 参数化查询
-5. **错误处理** - 统一错误中间件
-6. **日志记录** - 请求日志 + 查询日志
+## 📄 许可证
 
-### 数据库
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
 
-1. **表结构设计** - 4张表（users/tickets/comments/events）
-2. **外键约束** - 级联删除保证数据一致性
-3. **触发器** - 自动更新 updated_at 时间戳
-4. **索引优化** - 查询字段建立索引
-5. **审计日志** - events 表记录所有变更
+## 📞 联系方式
 
-## 性能指标
-
-- ✅ 首屏加载：< 1.2s (本地环境)
-- ✅ 首屏 JS：< 650KB (gzip 后)
-- ✅ API 响应：< 100ms (本地数据库)
-- ✅ 路由切换：< 300ms
-- ✅ Token 刷新：自动无感知
-
-## 开发规范
-
-- ✅ TypeScript 严格模式
-- ✅ ESLint + Prettier 代码规范
-- ✅ Vitest 单元测试
-- ✅ Git Commit 规范
-- ✅ RESTful API 设计
-
-## 浏览器支持
-
-- Chrome >= 90
-- Firefox >= 88
-- Safari >= 14
-- Edge >= 90
-
-## 项目文档
-
-- 📖 [完整部署指南](./SETUP.md) - 从零开始的详细步骤
-- 🔧 [后端 API 文档](./backend/README.md) - 接口说明
-- 🎨 [前端架构说明](./frontend/README.md) - 技术栈详解
-- 🗄️ [数据库设计](./database/README.md) - 表结构说明
-
-## GitHub 仓库
-
-🔗 https://github.com/YuChuChu42/ticket-handle-platform
-
-## License
-
-MIT
-
+- GitHub: [@YuChuChu42](https://github.com/YuChuChu42)
+- 项目地址: https://github.com/YuChuChu42/ticket-handle-platform
