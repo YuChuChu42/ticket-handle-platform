@@ -247,9 +247,12 @@ const loadUsers = async () => {
       pageSize: pagination.pageSize
     })
     
-    users.value = response.data.users
-    pagination.total = response.data.pagination.total
+    // 后端返回格式: { success: true, data: { users: [], pagination: {} } }
+    const responseData = response.data as any
+    users.value = responseData.data.users
+    pagination.total = responseData.data.pagination.total
   } catch (error) {
+    console.error('加载用户列表失败:', error)
     ElMessage.error('加载用户列表失败')
   } finally {
     loading.value = false
