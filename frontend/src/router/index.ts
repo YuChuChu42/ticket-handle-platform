@@ -13,13 +13,20 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('@/views/Layout.vue'),
     meta: { requiresAuth: true },
-    redirect: '/dashboard',
+    redirect: () => {
+      // 根据用户角色重定向到不同页面
+      const authStore = useAuthStore()
+      if (authStore.isReporter) {
+        return '/tickets'
+      }
+      return '/dashboard'
+    },
     children: [
       {
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
-        meta: { title: '数据看板' },
+        meta: { title: '数据看板', roles: ['admin', 'technician'] },
       },
       {
         path: 'tickets',
@@ -100,9 +107,13 @@ router.beforeEach((to, _from, next) => {
     }
   }
 
-  // 已登录用户访问登录页，重定向到首页
+  // 已登录用户访问登录页，根据角色重定向
   if (to.name === 'Login' && authStore.isAuthenticated) {
-    next({ name: 'Dashboard' })
+    if (authStore.isReporter) {
+      next({ name: 'TicketList' })
+    } else {
+      next({ name: 'Dashboard' })
+    }
     return
   }
 

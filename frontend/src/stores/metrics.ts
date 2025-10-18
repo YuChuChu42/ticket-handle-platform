@@ -7,7 +7,7 @@ export const useMetricsStore = defineStore('metrics', () => {
   // 状态
   const summary = ref<MetricsSummary>({
     today_count: '0',
-    open_count: '0',
+    pending_count: '0',
     in_progress_count: '0',
     resolved_count: '0',
     closed_count: '0',

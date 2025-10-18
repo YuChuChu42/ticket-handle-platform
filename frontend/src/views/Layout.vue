@@ -15,7 +15,10 @@
         text-color="#bfcbd9"
         active-text-color="#409EFF"
       >
-        <el-menu-item index="/dashboard">
+        <el-menu-item
+          v-if="authStore.isAdmin || authStore.isTechnician"
+          index="/dashboard"
+        >
           <el-icon><DataAnalysis /></el-icon>
           <template #title>数据看板</template>
         </el-menu-item>

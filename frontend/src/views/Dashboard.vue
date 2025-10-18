@@ -25,7 +25,7 @@
               <el-icon><Warning /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ summary.open_count }}</div>
+              <div class="stat-value">{{ summary.pending_count }}</div>
               <div class="stat-label">待处理</div>
             </div>
           </div>

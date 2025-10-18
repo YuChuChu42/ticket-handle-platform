@@ -2,7 +2,7 @@ import http from './http'
 
 export interface MetricsSummary {
   today_count: string
-  open_count: string
+  pending_count: string
   in_progress_count: string
   resolved_count: string
   closed_count: string
