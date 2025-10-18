@@ -217,7 +217,7 @@ class Ticket {
         COUNT(*) FILTER (WHERE e.type = 'created') as created_count,
         COUNT(*) FILTER (WHERE e.type = 'status_changed' AND e.new_value = 'resolved') as resolved_count
       FROM events e
-      WHERE e.created_at >= CURRENT_DATE - $1
+      WHERE e.created_at >= CURRENT_DATE - ($1 || ' days')::interval
       GROUP BY DATE(e.created_at)
       ORDER BY date ASC`,
       [days]
