@@ -406,9 +406,6 @@ const priorityLoading = ref(false)
 // 报告生成
 const reportLoading = ref(false)
 
-// API基础URL
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
-
 // 图片预览列表
 const previewImageList = computed(() => {
   if (!ticket.value.images) return []
@@ -417,7 +414,12 @@ const previewImageList = computed(() => {
 
 // 获取图片URL
 const getImageUrl = (path: string) => {
-  return `${API_BASE}/${path}`
+  // 使用相对路径，通过Vite代理访问后端静态文件
+  // 后端配置: app.use('/uploads', express.static('uploads'))
+  // 前端代理: '/api' -> 'http://localhost:3000'
+  // 图片路径: 'uploads/images/xxx.png'
+  // 完整URL: 'http://localhost:3000/uploads/images/xxx.png'
+  return `http://localhost:3000/${path}`
 }
 
 // 获取工单详情
