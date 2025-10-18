@@ -10,6 +10,7 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 // 导入路由
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const userRoutesV2 = require('./routes/userRoutes_v2'); // 用户管理V2版本
 const ticketRoutes = require('./routes/ticket_v2'); // 使用V2版本
 const metricsRoutes = require('./routes/metrics');
 
@@ -50,6 +51,7 @@ app.get('/health', (req, res) => {
 // API 路由
 app.use('/api/auth', authRoutes);
 app.use('/api', userRoutes);
+app.use('/api/users', userRoutesV2); // 用户管理V2版本
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/metrics', metricsRoutes);
 

@@ -293,7 +293,7 @@ exports.generateReport = async (req, res, next) => {
   }
 };
 
-// 下载报告文件（支持HTML和PDF）
+// 下载报告文件（仅支持HTML）
 exports.downloadReport = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -323,23 +323,19 @@ exports.downloadReport = async (req, res, next) => {
       });
     }
 
-    // 根据文件扩展名设置Content-Type
+    // 只支持HTML文件
     const ext = path.extname(ticket.report_file).toLowerCase();
-    let contentType, fileName;
-    
-    if (ext === '.html') {
-      contentType = 'text/html; charset=utf-8';
-      fileName = `工单报告-${id}.html`;
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
-      res.setHeader('Content-Type', contentType);
-      res.sendFile(path.resolve(filePath));
-    } else if (ext === '.pdf') {
-      fileName = `工单报告-${id}.pdf`;
-      res.download(filePath, fileName);
-    } else {
-      fileName = `工单报告-${id}${ext}`;
-      res.download(filePath, fileName);
+    if (ext !== '.html') {
+      return res.status(400).json({
+        success: false,
+        message: '只支持HTML格式的报告文件',
+      });
     }
+
+    const fileName = `工单报告-${id}.html`;
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.sendFile(path.resolve(filePath));
   } catch (error) {
     next(error);
   }

@@ -121,11 +121,7 @@
               <div v-if="ticket.report_file" class="info-row">
                 <label>技术报告：</label>
                 <div class="info-value">
-                  <el-button type="primary" size="small" @click="handleViewReport">
-                    <el-icon><View /></el-icon>
-                    查看报告
-                  </el-button>
-                  <el-button type="success" size="small" @click="handleDownloadReport" class="ml-2">
+                  <el-button type="primary" size="small" @click="handleDownloadReport">
                     <el-icon><Download /></el-icon>
                     下载报告
                   </el-button>
@@ -370,7 +366,6 @@ import {
   assignTicket,
   generateReport,
   downloadReport,
-  viewReport,
   getTechnicians,
 } from '@/api/ticket'
 import {
@@ -564,52 +559,14 @@ const handleGenerateReport = async () => {
   }
 }
 
-// 查看报告
-const handleViewReport = () => {
-  try {
-    viewReport(ticketId)
-    ElMessage.success('正在打开报告...')
-  } catch (error: any) {
-    console.error('查看报告失败:', error)
-    ElMessage.error('查看报告失败')
-  }
-}
-
 // 下载报告
 const handleDownloadReport = async () => {
   try {
-    // 使用axios下载，会自动带上认证token
-    const response = await downloadReport(ticketId)
-    
-    // 检查文件类型
-    const contentType = response.headers['content-type']
-    let fileName = `工单报告-${ticketId}`
-    
-    if (contentType?.includes('text/html')) {
-      fileName += '.html'
-    } else if (contentType?.includes('application/pdf')) {
-      fileName += '.pdf'
-    }
-    
-    // 创建blob对象
-    const blob = new Blob([response.data], { type: contentType || 'application/octet-stream' })
-    const url = window.URL.createObjectURL(blob)
-    
-    // 创建临时的 a 标签下载
-    const link = document.createElement('a')
-    link.href = url
-    link.download = fileName
-    document.body.appendChild(link)
-    link.click()
-    
-    // 清理
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    
-    ElMessage.success('报告下载成功')
+    downloadReport(ticketId)
+    ElMessage.success('正在下载报告...')
   } catch (error: any) {
     console.error('下载报告失败:', error)
-    ElMessage.error(error?.response?.data?.message || '下载报告失败')
+    ElMessage.error('下载报告失败')
   }
 }
 

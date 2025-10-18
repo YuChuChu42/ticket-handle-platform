@@ -41,6 +41,7 @@ declare module 'vue' {
     ImageUpload: typeof import('./components/ImageUpload.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    UserTable: typeof import('./components/UserTable.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

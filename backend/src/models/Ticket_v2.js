@@ -99,10 +99,10 @@ class Ticket {
     params.push(pageSize, offset);
     const result = await query(
       `SELECT t.*,
-              reporter.username as reporter_name,
+              reporter.full_name as reporter_name,
               reporter.company_name as reporter_company,
-              technician.username as technician_name,
-              admin_user.username as assigned_by_name
+              technician.full_name as technician_name,
+              admin_user.full_name as assigned_by_name
        FROM tickets t
        LEFT JOIN users reporter ON t.reporter_id = reporter.id
        LEFT JOIN users technician ON t.technician_id = technician.id
@@ -126,12 +126,12 @@ class Ticket {
   static async findById(id) {
     const ticketResult = await query(
       `SELECT t.*,
-              reporter.username as reporter_name,
+              reporter.full_name as reporter_name,
               reporter.company_name as reporter_company,
               reporter.email as reporter_email,
               reporter.phone as reporter_phone,
               reporter.full_name as reporter_full_name,
-              technician.username as technician_name,
+              technician.full_name as technician_name,
               technician.email as technician_email,
               technician.phone as technician_phone,
               technician.full_name as technician_full_name
