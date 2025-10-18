@@ -1,9 +1,10 @@
-const puppeteer = require('puppeteer');
+const axios = require('axios');
+const crypto = require('crypto-js');
 const fs = require('fs');
 const path = require('path');
 
 /**
- * 生成工单处理报告PDF（HTML转PDF方案）
+ * 生成工单处理报告PDF（阿里云文档转换方案）
  * @param {Object} ticket - 工单信息
  * @param {Object} reporter - 负责人信息
  * @param {Object} technician - 技术人员信息
@@ -52,7 +53,7 @@ async function generateTicketReport(ticket, reporter, technician) {
     <title>技术服务工单处理报告</title>
     <style>
         body {
-            font-family: 'Arial Unicode MS', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimSun', sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'SimSun', sans-serif;
             font-size: 12px;
             line-height: 1.6;
             margin: 0;
@@ -280,41 +281,91 @@ async function generateTicketReport(ticket, reporter, technician) {
 </body>
 </html>`;
 
-    // 启动浏览器并生成PDF
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--font-render-hinting=none',
-        '--disable-font-subpixel-positioning'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      },
-      printBackground: true,
-      displayHeaderFooter: false
-    });
-    
-    await browser.close();
-    
-    // 保存PDF文件
-    fs.writeFileSync(filePath, pdfBuffer);
-    
-    return relativePath;
-    
+    // 阿里云文档转换配置
+    const config = {
+      accessKeyId: process.env.ALIYUN_ACCESS_KEY_ID || 'your-access-key-id',
+      accessKeySecret: process.env.ALIYUN_ACCESS_KEY_SECRET || 'your-access-key-secret',
+      endpoint: 'https://docconvert.cn-hangzhou.aliyuncs.com',
+      region: 'cn-hangzhou'
+    };
+
+    // 如果配置了阿里云密钥，使用云服务
+    if (config.accessKeyId !== 'your-access-key-id' && config.accessKeySecret !== 'your-access-key-secret') {
+      console.log('使用阿里云文档转换服务生成PDF...');
+      
+      // 创建HTML文件
+      const htmlFilePath = path.join(reportDir, `temp-${fileName}.html`);
+      fs.writeFileSync(htmlFilePath, htmlTemplate, 'utf8');
+      
+      // 调用阿里云文档转换API
+      const pdfBuffer = await convertHtmlToPdfWithAliyun(htmlFilePath, config);
+      
+      // 保存PDF文件
+      fs.writeFileSync(filePath, pdfBuffer);
+      
+      // 清理临时文件
+      fs.unlinkSync(htmlFilePath);
+      
+      console.log('PDF生成成功（阿里云服务）:', relativePath);
+      return relativePath;
+    } else {
+      // 降级到本地PDFKit方案
+      console.log('未配置阿里云密钥，使用本地PDFKit方案...');
+      const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+      return await localGenerate(ticket, reporter, technician);
+    }
+
   } catch (error) {
     console.error('生成PDF报告失败:', error);
+    // 降级到本地方案
+    console.log('降级到本地PDFKit方案...');
+    const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+    return await localGenerate(ticket, reporter, technician);
+  }
+}
+
+/**
+ * 使用阿里云文档转换服务将HTML转换为PDF
+ */
+async function convertHtmlToPdfWithAliyun(htmlFilePath, config) {
+  try {
+    // 读取HTML文件
+    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+    
+    // 构建请求参数
+    const params = {
+      'SourceUri': 'data:text/html;base64,' + Buffer.from(htmlContent).toString('base64'),
+      'TargetType': 'pdf',
+      'TargetUri': 'data:application/pdf;base64,'
+    };
+
+    // 生成签名
+    const timestamp = new Date().toISOString();
+    const nonce = Math.random().toString(36).substring(2, 15);
+    
+    const stringToSign = `POST\napplication/json\n${timestamp}\n${nonce}\n/docconvert/v1/convert`;
+    const signature = crypto.HmacSHA1(stringToSign, config.accessKeySecret).toString(crypto.enc.Base64);
+
+    // 发送请求
+    const response = await axios.post(`${config.endpoint}/docconvert/v1/convert`, params, {
+      headers: {
+        'Authorization': `Bearer ${config.accessKeyId}:${signature}`,
+        'Content-Type': 'application/json',
+        'X-Acs-Timestamp': timestamp,
+        'X-Acs-Nonce': nonce
+      }
+    });
+
+    if (response.data && response.data.TargetUri) {
+      // 解码base64 PDF数据
+      const base64Data = response.data.TargetUri.replace('data:application/pdf;base64,', '');
+      return Buffer.from(base64Data, 'base64');
+    } else {
+      throw new Error('阿里云文档转换服务返回数据格式错误');
+    }
+
+  } catch (error) {
+    console.error('阿里云文档转换失败:', error.message);
     throw error;
   }
 }

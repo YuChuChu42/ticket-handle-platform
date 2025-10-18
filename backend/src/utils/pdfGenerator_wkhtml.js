@@ -1,49 +1,50 @@
-const puppeteer = require('puppeteer');
+const wkhtmltopdf = require('wkhtmltopdf');
 const fs = require('fs');
 const path = require('path');
 
 /**
- * 生成工单处理报告PDF（HTML转PDF方案）
+ * 生成工单处理报告PDF（wkhtmltopdf方案）
  * @param {Object} ticket - 工单信息
  * @param {Object} reporter - 负责人信息
  * @param {Object} technician - 技术人员信息
  * @returns {Promise<string>} - 返回PDF文件路径
  */
 async function generateTicketReport(ticket, reporter, technician) {
-  try {
-    // 确保报告目录存在
-    const reportDir = path.join(__dirname, '../../uploads/reports');
-    if (!fs.existsSync(reportDir)) {
-      fs.mkdirSync(reportDir, { recursive: true });
-    }
+  return new Promise((resolve, reject) => {
+    try {
+      // 确保报告目录存在
+      const reportDir = path.join(__dirname, '../../uploads/reports');
+      if (!fs.existsSync(reportDir)) {
+        fs.mkdirSync(reportDir, { recursive: true });
+      }
 
-    // 生成文件名
-    const fileName = `report-${ticket.id}-${Date.now()}.pdf`;
-    const filePath = path.join(reportDir, fileName);
-    const relativePath = `uploads/reports/${fileName}`;
+      // 生成文件名
+      const fileName = `report-${ticket.id}-${Date.now()}.pdf`;
+      const filePath = path.join(reportDir, fileName);
+      const relativePath = `uploads/reports/${fileName}`;
 
-    // 格式化日期
-    const formatDate = (date) => {
-      if (!date) return '未记录';
-      const d = new Date(date);
-      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-    };
+      // 格式化日期
+      const formatDate = (date) => {
+        if (!date) return '未记录';
+        const d = new Date(date);
+        return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+      };
 
-    const reportDate = formatDate(new Date());
-    const createdDate = formatDate(ticket.created_at);
-    const resolvedDate = formatDate(ticket.resolved_at);
+      const reportDate = formatDate(new Date());
+      const createdDate = formatDate(ticket.created_at);
+      const resolvedDate = formatDate(ticket.resolved_at);
 
-    // 计算处理时长
-    let duration = '';
-    if (ticket.created_at && ticket.resolved_at) {
-      const hours = Math.round((new Date(ticket.resolved_at) - new Date(ticket.created_at)) / (1000 * 60 * 60));
-      duration = `${hours} 小时`;
-    }
+      // 计算处理时长
+      let duration = '';
+      if (ticket.created_at && ticket.resolved_at) {
+        const hours = Math.round((new Date(ticket.resolved_at) - new Date(ticket.created_at)) / (1000 * 60 * 60));
+        duration = `${hours} 小时`;
+      }
 
-    const priorityMap = { low: '低', mid: '中', high: '高', urgent: '紧急' };
+      const priorityMap = { low: '低', mid: '中', high: '高', urgent: '紧急' };
 
-    // HTML模板
-    const htmlTemplate = `
+      // HTML模板
+      const htmlTemplate = `
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -52,7 +53,7 @@ async function generateTicketReport(ticket, reporter, technician) {
     <title>技术服务工单处理报告</title>
     <style>
         body {
-            font-family: 'Arial Unicode MS', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimSun', sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'SimSun', sans-serif;
             font-size: 12px;
             line-height: 1.6;
             margin: 0;
@@ -155,10 +156,6 @@ async function generateTicketReport(ticket, reporter, technician) {
             color: #666;
             border-top: 1px solid #ddd;
             padding-top: 15px;
-        }
-        @media print {
-            body { margin: 0; }
-            .section { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -280,43 +277,33 @@ async function generateTicketReport(ticket, reporter, technician) {
 </body>
 </html>`;
 
-    // 启动浏览器并生成PDF
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--font-render-hinting=none',
-        '--disable-font-subpixel-positioning'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      },
-      printBackground: true,
-      displayHeaderFooter: false
-    });
-    
-    await browser.close();
-    
-    // 保存PDF文件
-    fs.writeFileSync(filePath, pdfBuffer);
-    
-    return relativePath;
-    
-  } catch (error) {
-    console.error('生成PDF报告失败:', error);
-    throw error;
-  }
+      // 使用wkhtmltopdf生成PDF
+      const options = {
+        pageSize: 'A4',
+        marginTop: '20mm',
+        marginRight: '20mm',
+        marginBottom: '20mm',
+        marginLeft: '20mm',
+        encoding: 'UTF-8',
+        disableSmartShrinking: true
+      };
+
+      wkhtmltopdf(htmlTemplate, options)
+        .pipe(fs.createWriteStream(filePath))
+        .on('finish', () => {
+          console.log('PDF生成成功:', relativePath);
+          resolve(relativePath);
+        })
+        .on('error', (err) => {
+          console.error('PDF生成失败:', err);
+          reject(err);
+        });
+
+    } catch (error) {
+      console.error('生成PDF报告失败:', error);
+      reject(error);
+    }
+  });
 }
 
 module.exports = {

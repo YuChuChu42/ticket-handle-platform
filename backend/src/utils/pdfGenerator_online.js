@@ -1,9 +1,9 @@
-const puppeteer = require('puppeteer');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
 /**
- * 生成工单处理报告PDF（HTML转PDF方案）
+ * 生成工单处理报告PDF（在线HTML转PDF方案）
  * @param {Object} ticket - 工单信息
  * @param {Object} reporter - 负责人信息
  * @param {Object} technician - 技术人员信息
@@ -52,7 +52,7 @@ async function generateTicketReport(ticket, reporter, technician) {
     <title>技术服务工单处理报告</title>
     <style>
         body {
-            font-family: 'Arial Unicode MS', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimSun', sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'SimSun', sans-serif;
             font-size: 12px;
             line-height: 1.6;
             margin: 0;
@@ -280,42 +280,87 @@ async function generateTicketReport(ticket, reporter, technician) {
 </body>
 </html>`;
 
-    // 启动浏览器并生成PDF
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--font-render-hinting=none',
-        '--disable-font-subpixel-positioning'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      },
-      printBackground: true,
-      displayHeaderFooter: false
-    });
-    
-    await browser.close();
-    
-    // 保存PDF文件
-    fs.writeFileSync(filePath, pdfBuffer);
-    
-    return relativePath;
-    
+    // 尝试使用在线HTML转PDF服务
+    try {
+      console.log('使用在线HTML转PDF服务生成PDF...');
+      
+      // 使用html-pdf-online.com服务
+      const response = await axios.post('https://api.html-pdf-online.com/v1/generate', {
+        html: htmlTemplate,
+        options: {
+          format: 'A4',
+          margin: {
+            top: '20mm',
+            right: '20mm',
+            bottom: '20mm',
+            left: '20mm'
+          },
+          printBackground: true,
+          displayHeaderFooter: false
+        }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        },
+        timeout: 30000 // 30秒超时
+      });
+
+      if (response.data && response.data.pdf) {
+        // 解码base64 PDF数据
+        const pdfBuffer = Buffer.from(response.data.pdf, 'base64');
+        fs.writeFileSync(filePath, pdfBuffer);
+        
+        console.log('PDF生成成功（在线服务）:', relativePath);
+        return relativePath;
+      } else {
+        throw new Error('在线服务返回数据格式错误');
+      }
+
+    } catch (onlineError) {
+      console.log('在线服务失败，尝试备用方案...', onlineError.message);
+      
+      // 备用方案：使用htmltopdf.io
+      try {
+        const response2 = await axios.post('https://api.htmltopdf.io/v1/generate', {
+          html: htmlTemplate,
+          options: {
+            format: 'A4',
+            margin: '20mm',
+            printBackground: true
+          }
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        });
+
+        if (response2.data && response2.data.pdf) {
+          const pdfBuffer = Buffer.from(response2.data.pdf, 'base64');
+          fs.writeFileSync(filePath, pdfBuffer);
+          
+          console.log('PDF生成成功（备用在线服务）:', relativePath);
+          return relativePath;
+        } else {
+          throw new Error('备用在线服务返回数据格式错误');
+        }
+
+      } catch (backupError) {
+        console.log('所有在线服务失败，降级到本地PDFKit方案...', backupError.message);
+        
+        // 最终降级到本地方案
+        const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+        return await localGenerate(ticket, reporter, technician);
+      }
+    }
+
   } catch (error) {
     console.error('生成PDF报告失败:', error);
-    throw error;
+    // 最终降级到本地方案
+    console.log('最终降级到本地PDFKit方案...');
+    const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+    return await localGenerate(ticket, reporter, technician);
   }
 }
 

@@ -1,5 +1,5 @@
 const Ticket = require('../models/Ticket_v2');
-const { generateTicketReport } = require('../utils/pdfGenerator_simple');
+const { generateTicketReport } = require('../utils/pdfGenerator_online');
 const { query } = require('../config/database');
 const path = require('path');
 const fs = require('fs');

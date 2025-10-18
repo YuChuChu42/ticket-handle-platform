@@ -1,9 +1,10 @@
-const puppeteer = require('puppeteer');
+const axios = require('axios');
+const crypto = require('crypto-js');
 const fs = require('fs');
 const path = require('path');
 
 /**
- * 生成工单处理报告PDF（HTML转PDF方案）
+ * 生成工单处理报告PDF（腾讯云文档转换方案）
  * @param {Object} ticket - 工单信息
  * @param {Object} reporter - 负责人信息
  * @param {Object} technician - 技术人员信息
@@ -52,7 +53,7 @@ async function generateTicketReport(ticket, reporter, technician) {
     <title>技术服务工单处理报告</title>
     <style>
         body {
-            font-family: 'Arial Unicode MS', 'Hiragino Sans GB', 'Microsoft YaHei', 'SimSun', sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', 'SimSun', sans-serif;
             font-size: 12px;
             line-height: 1.6;
             margin: 0;
@@ -280,43 +281,156 @@ async function generateTicketReport(ticket, reporter, technician) {
 </body>
 </html>`;
 
-    // 启动浏览器并生成PDF
-    const browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox',
-        '--font-render-hinting=none',
-        '--disable-font-subpixel-positioning'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    await page.setContent(htmlTemplate, { waitUntil: 'networkidle0' });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '20mm',
-        bottom: '20mm',
-        left: '20mm'
-      },
-      printBackground: true,
-      displayHeaderFooter: false
-    });
-    
-    await browser.close();
-    
-    // 保存PDF文件
-    fs.writeFileSync(filePath, pdfBuffer);
-    
-    return relativePath;
-    
+    // 腾讯云文档转换配置
+    const config = {
+      secretId: process.env.TENCENT_SECRET_ID || 'your-secret-id',
+      secretKey: process.env.TENCENT_SECRET_KEY || 'your-secret-key',
+      region: 'ap-beijing'
+    };
+
+    // 如果配置了腾讯云密钥，使用云服务
+    if (config.secretId !== 'your-secret-id' && config.secretKey !== 'your-secret-key') {
+      console.log('使用腾讯云文档转换服务生成PDF...');
+      
+      // 创建HTML文件
+      const htmlFilePath = path.join(reportDir, `temp-${fileName}.html`);
+      fs.writeFileSync(htmlFilePath, htmlTemplate, 'utf8');
+      
+      // 调用腾讯云文档转换API
+      const pdfBuffer = await convertHtmlToPdfWithTencent(htmlFilePath, config);
+      
+      // 保存PDF文件
+      fs.writeFileSync(filePath, pdfBuffer);
+      
+      // 清理临时文件
+      fs.unlinkSync(htmlFilePath);
+      
+      console.log('PDF生成成功（腾讯云服务）:', relativePath);
+      return relativePath;
+    } else {
+      // 降级到本地PDFKit方案
+      console.log('未配置腾讯云密钥，使用本地PDFKit方案...');
+      const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+      return await localGenerate(ticket, reporter, technician);
+    }
+
   } catch (error) {
     console.error('生成PDF报告失败:', error);
+    // 降级到本地方案
+    console.log('降级到本地PDFKit方案...');
+    const { generateTicketReport: localGenerate } = require('./pdfGenerator_simple');
+    return await localGenerate(ticket, reporter, technician);
+  }
+}
+
+/**
+ * 使用腾讯云文档转换服务将HTML转换为PDF
+ */
+async function convertHtmlToPdfWithTencent(htmlFilePath, config) {
+  try {
+    // 读取HTML文件
+    const htmlContent = fs.readFileSync(htmlFilePath, 'utf8');
+    
+    // 腾讯云API参数
+    const timestamp = Math.floor(Date.now() / 1000);
+    const nonce = Math.floor(Math.random() * 1000000);
+    
+    // 构建请求参数
+    const params = {
+      Action: 'CreateDocumentTranscodeJob',
+      Version: '2020-11-26',
+      Region: config.region,
+      Timestamp: timestamp,
+      Nonce: nonce,
+      SourceUri: 'data:text/html;base64,' + Buffer.from(htmlContent).toString('base64'),
+      TargetType: 'pdf'
+    };
+
+    // 生成签名
+    const stringToSign = `POST\n/tencentcloud/v1\n${JSON.stringify(params)}`;
+    const signature = crypto.HmacSHA1(stringToSign, config.secretKey).toString(crypto.enc.Base64);
+
+    // 发送请求到腾讯云
+    const response = await axios.post('https://tmt.tencentcloudapi.com/', params, {
+      headers: {
+        'Authorization': `TC3-HMAC-SHA256 Credential=${config.secretId}/${new Date().toISOString().split('T')[0]}/tmt/tc3_request, SignedHeaders=content-type;host, Signature=${signature}`,
+        'Content-Type': 'application/json',
+        'X-TC-Action': 'CreateDocumentTranscodeJob',
+        'X-TC-Version': '2020-11-26',
+        'X-TC-Region': config.region,
+        'X-TC-Timestamp': timestamp.toString()
+      }
+    });
+
+    if (response.data && response.data.Response && response.data.Response.JobId) {
+      // 等待转换完成并获取结果
+      return await waitForJobCompletion(response.data.Response.JobId, config);
+    } else {
+      throw new Error('腾讯云文档转换服务返回数据格式错误');
+    }
+
+  } catch (error) {
+    console.error('腾讯云文档转换失败:', error.message);
     throw error;
   }
+}
+
+/**
+ * 等待转换任务完成
+ */
+async function waitForJobCompletion(jobId, config) {
+  const maxAttempts = 30; // 最多等待30次
+  let attempts = 0;
+  
+  while (attempts < maxAttempts) {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000);
+      const params = {
+        Action: 'DescribeDocumentTranscodeJob',
+        Version: '2020-11-26',
+        Region: config.region,
+        Timestamp: timestamp,
+        Nonce: Math.floor(Math.random() * 1000000),
+        JobId: jobId
+      };
+
+      const stringToSign = `POST\n/tencentcloud/v1\n${JSON.stringify(params)}`;
+      const signature = crypto.HmacSHA1(stringToSign, config.secretKey).toString(crypto.enc.Base64);
+
+      const response = await axios.post('https://tmt.tencentcloudapi.com/', params, {
+        headers: {
+          'Authorization': `TC3-HMAC-SHA256 Credential=${config.secretId}/${new Date().toISOString().split('T')[0]}/tmt/tc3_request, SignedHeaders=content-type;host, Signature=${signature}`,
+          'Content-Type': 'application/json',
+          'X-TC-Action': 'DescribeDocumentTranscodeJob',
+          'X-TC-Version': '2020-11-26',
+          'X-TC-Region': config.region,
+          'X-TC-Timestamp': timestamp.toString()
+        }
+      });
+
+      if (response.data && response.data.Response) {
+        const job = response.data.Response;
+        if (job.Status === 'Success') {
+          // 下载PDF文件
+          const pdfResponse = await axios.get(job.TargetUri, { responseType: 'arraybuffer' });
+          return Buffer.from(pdfResponse.data);
+        } else if (job.Status === 'Failed') {
+          throw new Error('文档转换失败');
+        }
+      }
+
+      // 等待2秒后重试
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      attempts++;
+      
+    } catch (error) {
+      console.error('查询转换状态失败:', error.message);
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  
+  throw new Error('文档转换超时');
 }
 
 module.exports = {
