@@ -42,8 +42,7 @@ async function generateTicketReport(ticket, reporter, technician) {
     const priorityMap = { low: '低', mid: '中', high: '高', urgent: '紧急' };
 
     // HTML模板
-    const htmlTemplate = `
-<!DOCTYPE html>
+    const htmlTemplate = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">

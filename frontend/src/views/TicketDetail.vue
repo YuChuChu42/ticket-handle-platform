@@ -121,9 +121,13 @@
               <div v-if="ticket.report_file" class="info-row">
                 <label>技术报告：</label>
                 <div class="info-value">
-                  <el-button type="primary" size="small" @click="handleDownloadReport">
-                    <el-icon><Document /></el-icon>
-                    下载PDF报告
+                  <el-button type="primary" size="small" @click="handleViewReport">
+                    <el-icon><View /></el-icon>
+                    查看报告
+                  </el-button>
+                  <el-button type="success" size="small" @click="handleDownloadReport" class="ml-2">
+                    <el-icon><Download /></el-icon>
+                    下载报告
                   </el-button>
                   <span class="text-muted ml-2">
                     生成时间：{{ formatDateTime(ticket.report_generated_at) }}
@@ -265,7 +269,7 @@
                 class="mb-2"
               >
                 <template #default>
-                  可以生成技术报告PDF文件
+                  可以生成技术报告HTML文件（支持打印为PDF）
                 </template>
               </el-alert>
               <el-button
@@ -275,7 +279,7 @@
                 @click="handleGenerateReport"
               >
                 <el-icon><Document /></el-icon>
-                生成PDF报告
+                生成技术报告
               </el-button>
             </div>
           </el-card>
@@ -357,7 +361,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Location, Phone, Document } from '@element-plus/icons-vue'
+import { Location, Phone, Document, View, Download } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   getTicketById,
@@ -366,6 +370,7 @@ import {
   assignTicket,
   generateReport,
   downloadReport,
+  viewReport,
   getTechnicians,
 } from '@/api/ticket'
 import {
@@ -548,7 +553,7 @@ const handleGenerateReport = async () => {
     const { data } = await generateReport(ticketId)
 
     if (data.success) {
-      ElMessage.success(data.message || 'PDF报告生成成功')
+      ElMessage.success(data.message || 'HTML报告生成成功')
       fetchTicketDetail()
     }
   } catch (error: any) {
@@ -559,20 +564,41 @@ const handleGenerateReport = async () => {
   }
 }
 
+// 查看报告
+const handleViewReport = () => {
+  try {
+    viewReport(ticketId)
+    ElMessage.success('正在打开报告...')
+  } catch (error: any) {
+    console.error('查看报告失败:', error)
+    ElMessage.error('查看报告失败')
+  }
+}
+
 // 下载报告
 const handleDownloadReport = async () => {
   try {
     // 使用axios下载，会自动带上认证token
     const response = await downloadReport(ticketId)
     
+    // 检查文件类型
+    const contentType = response.headers['content-type']
+    let fileName = `工单报告-${ticketId}`
+    
+    if (contentType?.includes('text/html')) {
+      fileName += '.html'
+    } else if (contentType?.includes('application/pdf')) {
+      fileName += '.pdf'
+    }
+    
     // 创建blob对象
-    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const blob = new Blob([response.data], { type: contentType || 'application/octet-stream' })
     const url = window.URL.createObjectURL(blob)
     
     // 创建临时的 a 标签下载
     const link = document.createElement('a')
     link.href = url
-    link.download = `工单报告-${ticketId}.pdf`
+    link.download = fileName
     document.body.appendChild(link)
     link.click()
     

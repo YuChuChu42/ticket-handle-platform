@@ -170,18 +170,65 @@ export const addComment = (ticketId: number, content: string) => {
   )
 }
 
-// 生成PDF报告（技术人员）
+// 生成报告（技术人员）
 export const generateReport = (ticketId: number) => {
   return http.post<{ success: boolean; data: { reportPath: string; downloadUrl: string }; message: string }>(
     `/tickets/${ticketId}/generate-report`
   )
 }
 
-// 下载PDF报告
+// 下载报告（支持HTML和PDF）
 export const downloadReport = (ticketId: number) => {
   return http.get(`/tickets/${ticketId}/download-report`, {
     responseType: 'blob',
   })
+}
+
+// 查看HTML报告（在新窗口中打开）
+export const viewReport = (ticketId: number) => {
+  const token = localStorage.getItem('accessToken')
+  const baseUrl = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
+  const url = `${baseUrl}/tickets/${ticketId}/download-report`
+  
+  // 在新窗口中打开报告
+  const newWindow = window.open('', '_blank')
+  if (newWindow) {
+    // 使用fetch获取报告内容，然后在新窗口中显示
+    fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/html; charset=utf-8'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      return response.text()
+    })
+    .then(html => {
+      // 设置新窗口的文档类型和编码
+      newWindow.document.open('text/html', 'utf-8')
+      newWindow.document.write(html)
+      newWindow.document.close()
+    })
+    .catch(error => {
+      console.error('加载报告失败:', error)
+      newWindow.document.write(`
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>加载失败</title>
+          </head>
+          <body>
+            <h1>报告加载失败</h1>
+            <p>错误信息: ${error.message}</p>
+            <p>请尝试下载报告文件</p>
+          </body>
+        </html>
+      `)
+    })
+  }
 }
 
 // 获取技术人员列表（管理员）
