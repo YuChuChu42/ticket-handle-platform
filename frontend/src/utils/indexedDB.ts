@@ -7,6 +7,8 @@ interface TicketDB extends DBSchema {
       id: string
       title: string
       description: string
+      location?: string
+      contactPhone?: string
       priority: string
       timestamp: number
     }
@@ -32,14 +34,16 @@ export const initDB = async () => {
 }
 
 // 保存草稿
-export const saveDraft = async (draft: {
+export const saveDraft = async (key: string, draft: {
   title: string
   description: string
+  location?: string
+  contactPhone?: string
   priority: string
 }) => {
   const database = await initDB()
   const draftData = {
-    id: 'ticket-draft', // 固定ID，只保存一个草稿
+    id: key, // 使用传入的key作为ID
     ...draft,
     timestamp: Date.now(),
   }
@@ -47,16 +51,16 @@ export const saveDraft = async (draft: {
 }
 
 // 获取草稿
-export const getDraft = async () => {
+export const getDraft = async (key: string = 'ticketCreate') => {
   const database = await initDB()
-  const draft = await database.get('drafts', 'ticket-draft')
+  const draft = await database.get('drafts', key)
   return draft
 }
 
 // 删除草稿
-export const deleteDraft = async () => {
+export const deleteDraft = async (key: string = 'ticketCreate') => {
   const database = await initDB()
-  await database.delete('drafts', 'ticket-draft')
+  await database.delete('drafts', key)
 }
 
 // 清除所有数据
