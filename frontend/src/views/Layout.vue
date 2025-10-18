@@ -26,7 +26,7 @@
         </el-menu-item>
 
         <el-menu-item
-          v-if="authStore.isAdmin || authStore.isAgent"
+          v-if="authStore.isReporter"
           index="/tickets/create"
         >
           <el-icon><Plus /></el-icon>
@@ -115,6 +115,9 @@ const toggleCollapse = () => {
 const getRoleText = (role: string) => {
   const roleMap: Record<string, string> = {
     admin: '管理员',
+    technician: '技术人员',
+    reporter: '负责人',
+    // 兼容旧版
     agent: '客服',
     viewer: '观察者',
   }
@@ -124,6 +127,9 @@ const getRoleText = (role: string) => {
 const getRoleType = (role: string) => {
   const typeMap: Record<string, any> = {
     admin: 'danger',
+    technician: 'warning',
+    reporter: 'success',
+    // 兼容旧版
     agent: 'warning',
     viewer: 'info',
   }

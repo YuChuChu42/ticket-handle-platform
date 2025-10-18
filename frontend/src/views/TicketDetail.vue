@@ -365,6 +365,7 @@ import {
   updateTicket,
   assignTicket,
   generateReport,
+  downloadReport,
   getTechnicians,
 } from '@/api/ticket'
 import {
@@ -559,18 +560,31 @@ const handleGenerateReport = async () => {
 }
 
 // 下载报告
-const handleDownloadReport = () => {
-  // API_BASE 已经包含 /api 路径，不需要再添加
-  const downloadUrl = `${API_BASE}/tickets/${ticketId}/download-report`
-  
-  // 创建临时的 a 标签下载
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = `工单报告-${ticketId}.pdf`
-  link.target = '_blank'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+const handleDownloadReport = async () => {
+  try {
+    // 使用axios下载，会自动带上认证token
+    const response = await downloadReport(ticketId)
+    
+    // 创建blob对象
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    
+    // 创建临时的 a 标签下载
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `工单报告-${ticketId}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    
+    // 清理
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    ElMessage.success('报告下载成功')
+  } catch (error: any) {
+    console.error('下载报告失败:', error)
+    ElMessage.error(error?.response?.data?.message || '下载报告失败')
+  }
 }
 
 // 返回
