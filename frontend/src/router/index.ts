@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
         path: 'tickets/create',
         name: 'TicketCreate',
         component: () => import('@/views/TicketCreate.vue'),
-        meta: { title: '创建工单', roles: ['admin', 'agent'] },
+        meta: { title: '创建工单', roles: ['reporter'] },
       },
       {
         path: 'tickets/:id',
