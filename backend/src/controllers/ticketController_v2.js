@@ -1,5 +1,5 @@
 const Ticket = require('../models/Ticket_v2');
-const { generateTicketReport } = require('../utils/pdfGenerator_online');
+const { generateTicketReport } = require('../utils/reportGenerator_html');
 const { query } = require('../config/database');
 const path = require('path');
 const fs = require('fs');
@@ -237,7 +237,7 @@ exports.addComment = async (req, res, next) => {
   }
 };
 
-// 生成PDF报告（技术人员功能）
+// 生成报告（技术人员功能）
 exports.generateReport = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -267,7 +267,7 @@ exports.generateReport = async (req, res, next) => {
     const reporter = reporterResult.rows[0];
     const technician = technicianResult.rows[0];
 
-    // 生成PDF
+    // 生成HTML报告
     const reportPath = await generateTicketReport(ticket, reporter, technician);
 
     // 更新工单的报告路径
@@ -276,7 +276,7 @@ exports.generateReport = async (req, res, next) => {
     // 记录事件
     await query(
       `INSERT INTO events (ticket_id, event_type, actor_id, description)
-       VALUES ($1, 'report_generated', $2, 'PDF报告已生成')`,
+       VALUES ($1, 'report_generated', $2, 'HTML报告已生成')`,
       [id, req.user.id]
     );
 
@@ -286,14 +286,14 @@ exports.generateReport = async (req, res, next) => {
         reportPath,
         downloadUrl: `/api/tickets/${id}/download-report`,
       },
-      message: 'PDF报告生成成功',
+      message: 'HTML报告生成成功',
     });
   } catch (error) {
     next(error);
   }
 };
 
-// 下载PDF报告
+// 下载报告文件（支持HTML和PDF）
 exports.downloadReport = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -323,7 +323,23 @@ exports.downloadReport = async (req, res, next) => {
       });
     }
 
-    res.download(filePath, `工单报告-${ticket.id}.pdf`);
+    // 根据文件扩展名设置Content-Type
+    const ext = path.extname(ticket.report_file).toLowerCase();
+    let contentType, fileName;
+    
+    if (ext === '.html') {
+      contentType = 'text/html; charset=utf-8';
+      fileName = `工单报告-${id}.html`;
+      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+      res.setHeader('Content-Type', contentType);
+      res.sendFile(path.resolve(filePath));
+    } else if (ext === '.pdf') {
+      fileName = `工单报告-${id}.pdf`;
+      res.download(filePath, fileName);
+    } else {
+      fileName = `工单报告-${id}${ext}`;
+      res.download(filePath, fileName);
+    }
   } catch (error) {
     next(error);
   }
