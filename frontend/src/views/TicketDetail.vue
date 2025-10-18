@@ -1,320 +1,701 @@
 <template>
-  <div v-loading="ticketStore.loading" class="ticket-detail">
+  <div class="ticket-detail">
     <el-page-header @back="goBack">
       <template #content>
-        <h2>工单详情</h2>
+        <h2>工单详情 #{{ ticketId }}</h2>
       </template>
     </el-page-header>
 
-    <div v-if="ticket" class="detail-content mt-4">
-      <!-- 基本信息 -->
-      <el-card shadow="never" class="mb-4">
-        <template #header>
-          <div class="flex-between">
-            <span class="card-title">基本信息</span>
-            <div v-if="canEdit">
-              <el-button
-                v-if="!isEditing"
-                text
-                type="primary"
-                :icon="Edit"
-                @click="startEdit"
+    <div v-loading="loading" class="detail-container mt-4">
+      <el-row :gutter="20">
+        <!-- 左侧：工单详情 -->
+        <el-col :span="16">
+          <el-card shadow="never" class="mb-4">
+            <template #header>
+              <div class="card-header">
+                <span>工单信息</span>
+                <div class="ticket-badges">
+                  <el-tag :type="getStatusType(ticket.status)">
+                    {{ formatStatus(ticket.status) }}
+                  </el-tag>
+                  <el-tag :type="getPriorityType(ticket.priority)">
+                    {{ formatPriority(ticket.priority) }}
+                  </el-tag>
+                </div>
+              </div>
+            </template>
+
+            <div class="ticket-info">
+              <div class="info-row">
+                <label>标题：</label>
+                <div class="info-value">{{ ticket.title }}</div>
+              </div>
+
+              <div class="info-row">
+                <label>问题描述：</label>
+                <div class="info-value description">{{ ticket.description }}</div>
+              </div>
+
+              <el-divider />
+
+              <div class="info-row">
+                <label>问题地点：</label>
+                <div class="info-value">
+                  <el-icon><Location /></el-icon>
+                  {{ ticket.location }}
+                </div>
+              </div>
+
+              <div class="info-row">
+                <label>对接电话：</label>
+                <div class="info-value">
+                  <el-icon><Phone /></el-icon>
+                  {{ ticket.contact_phone }}
+                </div>
+              </div>
+
+              <el-divider />
+
+              <div class="info-row">
+                <label>报告单位：</label>
+                <div class="info-value">{{ ticket.reporter_company || '未填写' }}</div>
+              </div>
+
+              <div class="info-row">
+                <label>负责人：</label>
+                <div class="info-value">
+                  {{ ticket.reporter_full_name || ticket.reporter_name }}
+                  <span v-if="ticket.reporter_phone" class="text-muted">
+                    ({{ ticket.reporter_phone }})
+                  </span>
+                </div>
+              </div>
+
+              <div class="info-row">
+                <label>技术人员：</label>
+                <div class="info-value">
+                  <span v-if="ticket.technician_id">
+                    {{ ticket.technician_full_name || ticket.technician_name }}
+                    <span v-if="ticket.technician_phone" class="text-muted">
+                      ({{ ticket.technician_phone }})
+                    </span>
+                  </span>
+                  <el-tag v-else type="info" size="small">未分配</el-tag>
+                </div>
+              </div>
+
+              <el-divider />
+
+              <div class="info-row">
+                <label>创建时间：</label>
+                <div class="info-value">{{ formatDateTime(ticket.created_at) }}</div>
+              </div>
+
+              <div v-if="ticket.resolved_at" class="info-row">
+                <label>解决时间：</label>
+                <div class="info-value">{{ formatDateTime(ticket.resolved_at) }}</div>
+              </div>
+
+              <!-- 现场图片 -->
+              <el-divider v-if="ticket.images && ticket.images.length > 0" />
+
+              <div v-if="ticket.images && ticket.images.length > 0" class="info-row">
+                <label>现场图片：</label>
+                <div class="info-value">
+                  <div class="image-gallery">
+                    <el-image
+                      v-for="image in ticket.images"
+                      :key="image.id"
+                      :src="getImageUrl(image.image_path)"
+                      :preview-src-list="previewImageList"
+                      fit="cover"
+                      class="gallery-image"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- PDF报告 -->
+              <el-divider v-if="ticket.report_file" />
+
+              <div v-if="ticket.report_file" class="info-row">
+                <label>技术报告：</label>
+                <div class="info-value">
+                  <el-button type="primary" size="small" @click="handleDownloadReport">
+                    <el-icon><Document /></el-icon>
+                    下载PDF报告
+                  </el-button>
+                  <span class="text-muted ml-2">
+                    生成时间：{{ formatDateTime(ticket.report_generated_at) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </el-card>
+
+          <!-- 评论区 -->
+          <el-card shadow="never">
+            <template #header>
+              <span>沟通记录</span>
+            </template>
+
+            <div class="comments-section">
+              <div
+                v-for="comment in ticket.comments"
+                :key="comment.id"
+                class="comment-item"
+                :class="`comment-type-${comment.comment_type}`"
               >
-                编辑
+                <div class="comment-header">
+                  <span class="comment-author">
+                    {{ comment.author_full_name || comment.author_name }}
+                  </span>
+                  <span class="comment-time">
+                    {{ formatRelativeTime(comment.created_at) }}
+                  </span>
+                </div>
+                <div class="comment-content">{{ comment.content }}</div>
+              </div>
+
+              <div v-if="!ticket.comments || ticket.comments.length === 0" class="empty-comments">
+                暂无沟通记录
+              </div>
+            </div>
+
+            <!-- 添加评论 -->
+            <div class="add-comment">
+              <el-input
+                v-model="commentContent"
+                type="textarea"
+                :rows="3"
+                placeholder="添加评论..."
+                maxlength="500"
+                show-word-limit
+              />
+              <el-button
+                type="primary"
+                :loading="commentLoading"
+                :disabled="!commentContent.trim()"
+                class="mt-2"
+                @click="handleAddComment"
+              >
+                发表评论
               </el-button>
-              <template v-else>
-                <el-button
-                  text
-                  type="success"
-                  :icon="Check"
-                  :loading="updating"
-                  @click="saveEdit"
-                >
-                  保存
-                </el-button>
-                <el-button text :icon="Close" @click="cancelEdit">
-                  取消
-                </el-button>
-              </template>
             </div>
-          </div>
-        </template>
+          </el-card>
+        </el-col>
 
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="工单ID">
-            #{{ ticket.id }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="状态">
-            <el-tag v-if="!isEditing" :type="getStatusType(ticket.status)">
-              {{ getStatusText(ticket.status) }}
-            </el-tag>
-            <el-select v-else v-model="editForm.status" size="small">
-              <el-option label="待处理" value="open" />
-              <el-option label="处理中" value="in_progress" />
-              <el-option label="已解决" value="resolved" />
-              <el-option label="已关闭" value="closed" />
-            </el-select>
-          </el-descriptions-item>
-
-          <el-descriptions-item label="优先级">
-            <el-tag v-if="!isEditing" :type="getPriorityType(ticket.priority)">
-              {{ getPriorityText(ticket.priority) }}
-            </el-tag>
-            <el-select v-else v-model="editForm.priority" size="small">
-              <el-option label="低" value="low" />
-              <el-option label="中" value="mid" />
-              <el-option label="高" value="high" />
-            </el-select>
-          </el-descriptions-item>
-
-          <el-descriptions-item label="处理人">
-            {{ ticket.assignee_name || '未分配' }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="创建人">
-            {{ ticket.creator_name }}
-            <span v-if="ticket.creator_email" class="text-muted">
-              ({{ ticket.creator_email }})
-            </span>
-          </el-descriptions-item>
-
-          <el-descriptions-item label="创建时间">
-            {{ formatDateTime(ticket.created_at) }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="更新时间">
-            {{ formatDateTime(ticket.updated_at) }}
-          </el-descriptions-item>
-
-          <el-descriptions-item label="标题" :span="2">
-            <template v-if="!isEditing">
-              <strong>{{ ticket.title }}</strong>
+        <!-- 右侧：操作面板 -->
+        <el-col :span="8">
+          <!-- 管理员：分配工单 -->
+          <el-card v-if="authStore.isAdmin" shadow="never" class="mb-4">
+            <template #header>
+              <span>工单分配</span>
             </template>
-            <el-input v-else v-model="editForm.title" />
-          </el-descriptions-item>
-
-          <el-descriptions-item label="描述" :span="2">
-            <template v-if="!isEditing">
-              <div class="description">{{ ticket.description || '无' }}</div>
-            </template>
-            <el-input
-              v-else
-              v-model="editForm.description"
-              type="textarea"
-              :rows="4"
-            />
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <!-- 评论区 -->
-      <el-card shadow="never">
-        <template #header>
-          <span class="card-title">
-            评论 ({{ ticket.comments?.length || 0 }})
-          </span>
-        </template>
-
-        <!-- 评论列表 -->
-        <div v-if="ticket.comments && ticket.comments.length > 0" class="comments-list">
-          <div
-            v-for="comment in ticket.comments"
-            :key="comment.id"
-            class="comment-item"
-          >
-            <div class="comment-header">
-              <span class="comment-author">{{ comment.author_name }}</span>
-              <span class="comment-time">
-                {{ formatRelativeTime(comment.created_at) }}
-              </span>
+            <div class="action-panel">
+              <el-select
+                v-model="assignTechnicianId"
+                placeholder="选择技术人员"
+                style="width: 100%"
+                class="mb-2"
+              >
+                <el-option
+                  v-for="tech in technicians"
+                  :key="tech.id"
+                  :label="tech.full_name"
+                  :value="tech.id"
+                />
+              </el-select>
+              <el-button
+                type="primary"
+                style="width: 100%"
+                :loading="assignLoading"
+                :disabled="!assignTechnicianId"
+                @click="handleAssignTicket"
+              >
+                分配工单
+              </el-button>
             </div>
-            <div class="comment-content">{{ comment.content }}</div>
-          </div>
-        </div>
-        <el-empty v-else description="暂无评论" />
+          </el-card>
 
-        <!-- 添加评论 -->
-        <div class="add-comment mt-4">
-          <el-input
-            v-model="commentContent"
-            type="textarea"
-            :rows="3"
-            placeholder="输入评论..."
-            maxlength="500"
-            show-word-limit
-          />
-          <el-button
-            type="primary"
-            class="mt-2"
-            :disabled="!commentContent.trim()"
-            :loading="commenting"
-            @click="handleAddComment"
+          <!-- 技术人员：修改状态 -->
+          <el-card v-if="authStore.isTechnician" shadow="never" class="mb-4">
+            <template #header>
+              <span>状态管理</span>
+            </template>
+            <div class="action-panel">
+              <el-select
+                v-model="newStatus"
+                placeholder="选择状态"
+                style="width: 100%"
+                class="mb-2"
+              >
+                <el-option label="待处理" value="pending" />
+                <el-option label="处理中" value="in_progress" />
+                <el-option label="已解决" value="resolved" />
+                <el-option label="已关闭" value="closed" />
+              </el-select>
+              <el-button
+                type="primary"
+                style="width: 100%"
+                :loading="statusLoading"
+                :disabled="!newStatus || newStatus === ticket.status"
+                @click="handleUpdateStatus"
+              >
+                更新状态
+              </el-button>
+            </div>
+          </el-card>
+
+          <!-- 技术人员：生成报告 -->
+          <el-card
+            v-if="authStore.isTechnician && ticket.status === 'resolved' && !ticket.report_file"
+            shadow="never"
+            class="mb-4"
           >
-            发表评论
-          </el-button>
-        </div>
-      </el-card>
+            <template #header>
+              <span>生成报告</span>
+            </template>
+            <div class="action-panel">
+              <el-alert
+                title="工单已解决"
+                type="success"
+                :closable="false"
+                show-icon
+                class="mb-2"
+              >
+                <template #default>
+                  可以生成技术报告PDF文件
+                </template>
+              </el-alert>
+              <el-button
+                type="success"
+                style="width: 100%"
+                :loading="reportLoading"
+                @click="handleGenerateReport"
+              >
+                <el-icon><Document /></el-icon>
+                生成PDF报告
+              </el-button>
+            </div>
+          </el-card>
+
+          <!-- 负责人：修改优先级 -->
+          <el-card v-if="authStore.isReporter && ticket.reporter_id === authStore.user?.id" shadow="never" class="mb-4">
+            <template #header>
+              <span>优先级设置</span>
+            </template>
+            <div class="action-panel">
+              <el-select
+                v-model="newPriority"
+                placeholder="选择优先级"
+                style="width: 100%"
+                class="mb-2"
+              >
+                <el-option label="低" value="low" />
+                <el-option label="中" value="mid" />
+                <el-option label="高" value="high" />
+                <el-option label="紧急" value="urgent" />
+              </el-select>
+              <el-button
+                type="primary"
+                style="width: 100%"
+                :loading="priorityLoading"
+                :disabled="!newPriority || newPriority === ticket.priority"
+                @click="handleUpdatePriority"
+              >
+                更新优先级
+              </el-button>
+            </div>
+          </el-card>
+
+          <!-- 操作提示 -->
+          <el-card shadow="never">
+            <template #header>
+              <span>操作提示</span>
+            </template>
+            <div class="tips">
+              <el-alert
+                v-if="authStore.isAdmin"
+                title="管理员"
+                type="info"
+                :closable="false"
+              >
+                <template #default>
+                  您可以分配工单给技术人员
+                </template>
+              </el-alert>
+              <el-alert
+                v-if="authStore.isTechnician"
+                title="技术人员"
+                type="info"
+                :closable="false"
+              >
+                <template #default>
+                  您可以修改工单状态并生成报告
+                </template>
+              </el-alert>
+              <el-alert
+                v-if="authStore.isReporter"
+                title="负责人"
+                type="info"
+                :closable="false"
+              >
+                <template #default>
+                  您可以修改优先级并查看处理进度
+                </template>
+              </el-alert>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Edit, Check, Close } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { useTicketStore } from '@/stores/ticket'
+import { Location, Phone, Document } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import {
+  getTicketById,
+  addComment,
+  updateTicket,
+  assignTicket,
+  generateReport,
+  getTechnicians,
+} from '@/api/ticket'
 import {
   formatDateTime,
   formatRelativeTime,
-  getStatusText,
+  formatStatus,
+  formatPriority,
   getStatusType,
-  getPriorityText,
   getPriorityType,
 } from '@/utils/format'
+import type { TicketDetail, Technician } from '@/api/ticket'
 
 const route = useRoute()
 const router = useRouter()
-const ticketStore = useTicketStore()
 const authStore = useAuthStore()
 
-const isEditing = ref(false)
-const updating = ref(false)
-const commenting = ref(false)
+const ticketId = Number(route.params.id)
+const loading = ref(false)
+const ticket = ref<TicketDetail>({} as TicketDetail)
+
+// 评论
 const commentContent = ref('')
+const commentLoading = ref(false)
 
-const ticket = computed(() => ticketStore.currentTicket)
-const canEdit = computed(() => authStore.isAdmin || authStore.isAgent)
+// 分配
+const assignTechnicianId = ref<number>()
+const assignLoading = ref(false)
+const technicians = ref<Technician[]>([])
 
-const editForm = reactive({
-  title: '',
-  description: '',
-  status: '',
-  priority: '',
+// 状态更新
+const newStatus = ref('')
+const statusLoading = ref(false)
+
+// 优先级更新
+const newPriority = ref('')
+const priorityLoading = ref(false)
+
+// 报告生成
+const reportLoading = ref(false)
+
+// API基础URL
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000'
+
+// 图片预览列表
+const previewImageList = computed(() => {
+  if (!ticket.value.images) return []
+  return ticket.value.images.map((image) => getImageUrl(image.image_path))
 })
 
-const startEdit = () => {
-  if (ticket.value) {
-    editForm.title = ticket.value.title
-    editForm.description = ticket.value.description || ''
-    editForm.status = ticket.value.status
-    editForm.priority = ticket.value.priority
-    isEditing.value = true
+// 获取图片URL
+const getImageUrl = (path: string) => {
+  return `${API_BASE}/${path}`
+}
+
+// 获取工单详情
+const fetchTicketDetail = async () => {
+  try {
+    loading.value = true
+    const { data } = await getTicketById(ticketId)
+
+    if (data.success) {
+      ticket.value = data.data
+      newStatus.value = ticket.value.status
+      newPriority.value = ticket.value.priority
+      assignTechnicianId.value = ticket.value.technician_id || undefined
+    }
+  } catch (error: any) {
+    console.error('获取工单详情失败:', error)
+    ElMessage.error(error?.response?.data?.message || '获取工单详情失败')
+  } finally {
+    loading.value = false
   }
 }
 
-const cancelEdit = () => {
-  isEditing.value = false
+// 获取技术人员列表
+const fetchTechnicians = async () => {
+  if (!authStore.isAdmin) return
+
+  try {
+    const { data } = await getTechnicians()
+    if (data.success) {
+      technicians.value = data.data
+    }
+  } catch (error) {
+    console.error('获取技术人员列表失败:', error)
+  }
 }
 
-const saveEdit = async () => {
-  if (!ticket.value) return
+// 添加评论
+const handleAddComment = async () => {
+  if (!commentContent.value.trim()) return
 
-  updating.value = true
   try {
-    const success = await ticketStore.updateTicket(ticket.value.id, {
-      title: editForm.title,
-      description: editForm.description,
-      status: editForm.status as any,
-      priority: editForm.priority as any,
+    commentLoading.value = true
+    const { data } = await addComment(ticketId, commentContent.value.trim())
+
+    if (data.success) {
+      ElMessage.success(data.message || '评论成功')
+      commentContent.value = ''
+      fetchTicketDetail()
+    }
+  } catch (error: any) {
+    console.error('添加评论失败:', error)
+    ElMessage.error(error?.response?.data?.message || '添加评论失败')
+  } finally {
+    commentLoading.value = false
+  }
+}
+
+// 分配工单
+const handleAssignTicket = async () => {
+  if (!assignTechnicianId.value) return
+
+  try {
+    assignLoading.value = true
+    const { data } = await assignTicket(ticketId, {
+      technicianId: assignTechnicianId.value,
     })
 
-    if (success) {
-      ElMessage.success('更新成功')
-      isEditing.value = false
+    if (data.success) {
+      ElMessage.success(data.message || '分配成功')
+      fetchTicketDetail()
     }
-  } catch (error) {
-    ElMessage.error('更新失败')
+  } catch (error: any) {
+    console.error('分配工单失败:', error)
+    ElMessage.error(error?.response?.data?.message || '分配工单失败')
   } finally {
-    updating.value = false
+    assignLoading.value = false
   }
 }
 
-const handleAddComment = async () => {
-  if (!ticket.value || !commentContent.value.trim()) return
+// 更新状态
+const handleUpdateStatus = async () => {
+  if (!newStatus.value || newStatus.value === ticket.value.status) return
 
-  commenting.value = true
   try {
-    const success = await ticketStore.addComment(
-      ticket.value.id,
-      commentContent.value.trim()
-    )
+    statusLoading.value = true
+    const { data } = await updateTicket(ticketId, {
+      status: newStatus.value as any,
+    })
 
-    if (success) {
-      ElMessage.success('评论发表成功')
-      commentContent.value = ''
+    if (data.success) {
+      ElMessage.success(data.message || '状态更新成功')
+      fetchTicketDetail()
     }
-  } catch (error) {
-    ElMessage.error('评论发表失败')
+  } catch (error: any) {
+    console.error('更新状态失败:', error)
+    ElMessage.error(error?.response?.data?.message || '更新状态失败')
   } finally {
-    commenting.value = false
+    statusLoading.value = false
   }
 }
 
+// 更新优先级
+const handleUpdatePriority = async () => {
+  if (!newPriority.value || newPriority.value === ticket.value.priority) return
+
+  try {
+    priorityLoading.value = true
+    const { data } = await updateTicket(ticketId, {
+      priority: newPriority.value as any,
+    })
+
+    if (data.success) {
+      ElMessage.success(data.message || '优先级更新成功')
+      fetchTicketDetail()
+    }
+  } catch (error: any) {
+    console.error('更新优先级失败:', error)
+    ElMessage.error(error?.response?.data?.message || '更新优先级失败')
+  } finally {
+    priorityLoading.value = false
+  }
+}
+
+// 生成报告
+const handleGenerateReport = async () => {
+  try {
+    reportLoading.value = true
+    const { data } = await generateReport(ticketId)
+
+    if (data.success) {
+      ElMessage.success(data.message || 'PDF报告生成成功')
+      fetchTicketDetail()
+    }
+  } catch (error: any) {
+    console.error('生成报告失败:', error)
+    ElMessage.error(error?.response?.data?.message || '生成报告失败')
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+// 下载报告
+const handleDownloadReport = () => {
+  const downloadUrl = `${API_BASE}/api/tickets/${ticketId}/download-report`
+  window.open(downloadUrl, '_blank')
+}
+
+// 返回
 const goBack = () => {
-  router.back()
+  router.push('/tickets')
 }
 
-onMounted(async () => {
-  const id = parseInt(route.params.id as string)
-  if (id) {
-    await ticketStore.fetchTicketById(id)
-  }
+// 初始化
+onMounted(() => {
+  fetchTicketDetail()
+  fetchTechnicians()
 })
 </script>
 
 <style scoped>
 .ticket-detail {
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 20px;
 }
 
-.detail-content {
-  margin-top: 20px;
+.detail-container {
+  margin-top: 16px;
 }
 
-.card-title {
-  font-size: 16px;
-  font-weight: 500;
+.mt-4 {
+  margin-top: 16px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-2 {
+  margin-top: 8px;
+}
+
+.mb-2 {
+  margin-bottom: 8px;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticket-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.ticket-info {
+  line-height: 1.8;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.info-row label {
+  flex-shrink: 0;
+  width: 120px;
+  font-weight: 600;
+  color: #606266;
+}
+
+.info-value {
+  flex: 1;
   color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.info-value.description {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  display: block;
 }
 
 .text-muted {
   color: #909399;
-  font-size: 13px;
+  font-size: 14px;
 }
 
-.description {
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.6;
+.image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
 }
 
-.comments-list {
-  max-height: 600px;
+.gallery-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.comments-section {
+  max-height: 400px;
   overflow-y: auto;
+  margin-bottom: 16px;
 }
 
 .comment-item {
-  padding: 16px;
-  border-bottom: 1px solid #ebeef5;
+  padding: 12px;
+  margin-bottom: 12px;
+  background-color: #f5f7fa;
+  border-radius: 6px;
+  border-left: 3px solid #dcdfe6;
 }
 
-.comment-item:last-child {
-  border-bottom: none;
+.comment-type-assignment {
+  background-color: #ecf5ff;
+  border-left-color: #409eff;
+}
+
+.comment-type-status_change {
+  background-color: #fdf6ec;
+  border-left-color: #e6a23c;
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   margin-bottom: 8px;
 }
 
 .comment-author {
-  font-weight: 500;
+  font-weight: 600;
   color: #303133;
 }
 
@@ -327,18 +708,25 @@ onMounted(async () => {
   color: #606266;
   line-height: 1.6;
   white-space: pre-wrap;
-  word-break: break-word;
+}
+
+.empty-comments {
+  text-align: center;
+  padding: 40px;
+  color: #909399;
 }
 
 .add-comment {
-  border-top: 1px solid #ebeef5;
+  margin-top: 16px;
   padding-top: 16px;
+  border-top: 1px solid #dcdfe6;
 }
 
-@media (max-width: 768px) {
-  :deep(.el-descriptions__label) {
-    width: 100px;
-  }
+.action-panel {
+  padding: 8px 0;
+}
+
+.tips :deep(.el-alert) {
+  margin-bottom: 0;
 }
 </style>
-

@@ -46,12 +46,14 @@ export const formatRelativeTime = (dateStr: string): string => {
 }
 
 // 工单状态文本
-export const getStatusText = (status: string): string => {
+export const formatStatus = (status: string): string => {
   const statusMap: Record<string, string> = {
-    open: '待处理',
+    pending: '待处理',
     in_progress: '处理中',
     resolved: '已解决',
     closed: '已关闭',
+    // 兼容旧版
+    open: '待处理',
   }
   return statusMap[status] || status
 }
@@ -59,20 +61,23 @@ export const getStatusText = (status: string): string => {
 // 工单状态类型
 export const getStatusType = (status: string): string => {
   const typeMap: Record<string, string> = {
-    open: 'danger',
+    pending: 'info',
     in_progress: 'warning',
     resolved: 'success',
-    closed: 'info',
+    closed: '',
+    // 兼容旧版
+    open: 'danger',
   }
   return typeMap[status] || ''
 }
 
 // 优先级文本
-export const getPriorityText = (priority: string): string => {
+export const formatPriority = (priority: string): string => {
   const priorityMap: Record<string, string> = {
     low: '低',
     mid: '中',
     high: '高',
+    urgent: '紧急',
   }
   return priorityMap[priority] || priority
 }
@@ -81,11 +86,16 @@ export const getPriorityText = (priority: string): string => {
 export const getPriorityType = (priority: string): string => {
   const typeMap: Record<string, string> = {
     low: 'info',
-    mid: 'warning',
-    high: 'danger',
+    mid: '',
+    high: 'warning',
+    urgent: 'danger',
   }
   return typeMap[priority] || ''
 }
+
+// 兼容旧版导出
+export const getStatusText = formatStatus
+export const getPriorityText = formatPriority
 
 // 防抖
 export const debounce = <T extends (...args: any[]) => any>(

@@ -15,8 +15,12 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!accessToken.value)
   const userRole = computed(() => user.value?.role || '')
   const isAdmin = computed(() => userRole.value === 'admin')
-  const isAgent = computed(() => userRole.value === 'agent')
-  const isViewer = computed(() => userRole.value === 'viewer')
+  const isTechnician = computed(() => userRole.value === 'technician')
+  const isReporter = computed(() => userRole.value === 'reporter')
+  
+  // 兼容旧版（可选）
+  const isAgent = computed(() => userRole.value === 'technician') // 技术人员 = 旧版客服
+  const isViewer = computed(() => userRole.value === 'reporter') // 负责人 = 旧版观察者
 
   // 设置访问令牌
   const setAccessToken = (token: string) => {
@@ -93,8 +97,10 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     userRole,
     isAdmin,
-    isAgent,
-    isViewer,
+    isTechnician,
+    isReporter,
+    isAgent, // 兼容
+    isViewer, // 兼容
     setAccessToken,
     setRefreshToken,
     setUser,
