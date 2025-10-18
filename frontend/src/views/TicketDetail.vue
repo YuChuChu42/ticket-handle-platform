@@ -416,10 +416,11 @@ const previewImageList = computed(() => {
 const getImageUrl = (path: string) => {
   // 使用相对路径，通过Vite代理访问后端静态文件
   // 后端配置: app.use('/uploads', express.static('uploads'))
-  // 前端代理: '/api' -> 'http://localhost:3000'
-  // 图片路径: 'uploads/images/xxx.png'
-  // 完整URL: 'http://localhost:3000/uploads/images/xxx.png'
-  return `http://localhost:3000/${path}`
+  // 前端代理: '/uploads' -> 'http://localhost:3000/uploads'
+  // 数据库路径: 'uploads/images/xxx.png'
+  // 返回路径: '/uploads/images/xxx.png'
+  // 实际访问: http://localhost:5173/uploads/images/xxx.png (通过代理转发到后端)
+  return `/${path}`
 }
 
 // 获取工单详情
