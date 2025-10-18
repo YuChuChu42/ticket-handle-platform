@@ -1,0 +1,33 @@
+{
+  "name": "ticket-handle-platform",
+  "version": "1.0.0",
+  "description": "智链工单 & 轻量运营看板 - 完整全栈项目",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "init-db": "cd backend && npm run init-db"
+  },
+  "keywords": [
+    "ticket-system",
+    "vue3",
+    "express",
+    "postgresql",
+    "typescript",
+    "pinia",
+    "jwt"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
