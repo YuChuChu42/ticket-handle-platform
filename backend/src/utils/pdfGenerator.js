@@ -34,6 +34,16 @@ async function generateTicketReport(ticket, reporter, technician) {
         }
       });
 
+      // 注册中文字体
+      const fontPath = process.platform === 'darwin' 
+        ? '/System/Library/Fonts/PingFang.ttc'
+        : 'C:/Windows/Fonts/msyh.ttc';
+      
+      const hasChineseFont = fs.existsSync(fontPath);
+      if (hasChineseFont) {
+        doc.registerFont('ChineseFont', fontPath);
+      }
+
       // 管道输出到文件
       const stream = fs.createWriteStream(filePath);
       doc.pipe(stream);
@@ -49,14 +59,22 @@ async function generateTicketReport(ticket, reporter, technician) {
       const createdDate = formatDate(ticket.created_at);
       const resolvedDate = formatDate(ticket.resolved_at);
 
+      // 字体设置函数
+      const setChineseFont = (size, bold = false) => {
+        doc.fontSize(size);
+        if (hasChineseFont) {
+          doc.font('ChineseFont');
+        } else {
+          doc.font(bold ? 'Helvetica-Bold' : 'Helvetica');
+        }
+      };
+
       // ===== 报告头部 =====
-      doc.fontSize(20)
-         .font('Helvetica-Bold')
-         .text('技术服务工单处理报告', { align: 'center' });
+      setChineseFont(20, true);
+      doc.text('技术服务工单处理报告', { align: 'center' });
       
-      doc.fontSize(10)
-         .font('Helvetica')
-         .text('Technical Service Ticket Report', { align: 'center' });
+      doc.fontSize(10).font('Helvetica');
+      doc.text('Technical Service Ticket Report', { align: 'center' });
       
       doc.moveDown();
       doc.moveTo(72, doc.y)
@@ -65,20 +83,17 @@ async function generateTicketReport(ticket, reporter, technician) {
       doc.moveDown(0.5);
 
       // ===== 报告编号和日期 =====
-      doc.fontSize(10);
+      setChineseFont(10);
       doc.text(`报告编号：TK-${String(ticket.id).padStart(6, '0')}`, { continued: true })
          .text(`生成日期：${reportDate}`, { align: 'right' });
       doc.moveDown(1.5);
 
       // ===== 工单基本信息 =====
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('一、工单基本信息');
+      setChineseFont(14, true);
+      doc.text('一、工单基本信息');
       doc.moveDown(0.5);
 
-      doc.fontSize(11)
-         .font('Helvetica');
-      
+      setChineseFont(11);
       doc.text(`报告单位：${reporter.company_name || '未填写'}`);
       doc.text(`联系人：${reporter.full_name}`);
       doc.text(`联系电话：${ticket.contact_phone}`);
@@ -86,18 +101,16 @@ async function generateTicketReport(ticket, reporter, technician) {
       doc.moveDown(0.5);
       doc.text(`工单标题：${ticket.title}`);
       doc.text(`问题描述：`);
-      doc.fontSize(10)
-         .text(ticket.description, { indent: 20, width: 450 });
+      doc.fontSize(10);
+      doc.text(ticket.description, { indent: 20, width: 450 });
       doc.moveDown(1.5);
 
       // ===== 处理过程 =====
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('二、处理过程记录');
+      setChineseFont(14, true);
+      doc.text('二、处理过程记录');
       doc.moveDown(0.5);
 
-      doc.fontSize(11)
-         .font('Helvetica');
+      setChineseFont(11);
       doc.text(`工单创建时间：${createdDate}`);
       doc.text(`分配技术人员：${technician ? technician.full_name : '未分配'}`);
       doc.text(`技术人员联系方式：${technician ? technician.phone : '未分配'}`);
@@ -114,13 +127,11 @@ async function generateTicketReport(ticket, reporter, technician) {
       doc.moveDown(1.5);
 
       // ===== 处理结果 =====
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('三、问题诊断与处理结果');
+      setChineseFont(14, true);
+      doc.text('三、问题诊断与处理结果');
       doc.moveDown(0.5);
 
-      doc.fontSize(11)
-         .font('Helvetica');
+      setChineseFont(11);
       
       const resultText = `${reporter.company_name}于${createdDate}报告的"${ticket.title}"技术问题，经我司技术团队接到工单后，立即组织专业技术人员进行远程诊断与现场勘查。
 
@@ -132,13 +143,11 @@ async function generateTicketReport(ticket, reporter, technician) {
       doc.moveDown(1.5);
 
       // ===== 技术说明 =====
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('四、技术说明');
+      setChineseFont(14, true);
+      doc.text('四、技术说明');
       doc.moveDown(0.5);
 
-      doc.fontSize(11)
-         .font('Helvetica');
+      setChineseFont(11);
       
       const techNote = `本次技术服务严格遵守行业标准和操作规范，采用专业的技术手段和工具进行问题诊断。处理过程中确保了设备和数据的安全性，未对客户现有系统造成任何不良影响。
 
@@ -148,13 +157,12 @@ async function generateTicketReport(ticket, reporter, technician) {
       doc.moveDown(1.5);
 
       // ===== 责任声明 =====
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('五、责任声明与法律效力');
+      setChineseFont(14, true);
+      doc.text('五、责任声明与法律效力');
       doc.moveDown(0.5);
 
-      doc.fontSize(10)
-         .font('Helvetica');
+      doc.fontSize(10);
+      if (hasChineseFont) doc.font('ChineseFont');
       
       const declaration = `本报告由我司正式出具，真实、完整地记录了工单处理的全过程。报告内容经过技术负责人审核确认，具有以下法律效力：
 
@@ -174,9 +182,7 @@ async function generateTicketReport(ticket, reporter, technician) {
          .stroke();
       doc.moveDown(0.5);
 
-      doc.fontSize(11)
-         .font('Helvetica');
-      
+      setChineseFont(11);
       doc.text(`技术负责人：${technician ? technician.full_name : '_________________'}`, { continued: true });
       doc.text(`报告日期：${reportDate}`, { align: 'right' });
       doc.moveDown(0.5);
@@ -187,14 +193,13 @@ async function generateTicketReport(ticket, reporter, technician) {
 
       // ===== 页脚 =====
       const pageHeight = doc.page.height;
-      doc.fontSize(8)
-         .font('Helvetica')
-         .text(
-           '本报告由智链技术服务系统自动生成 | 24小时服务热线：400-XXX-XXXX',
-           72,
-           pageHeight - 50,
-           { align: 'center', width: 451 }
-         );
+      doc.fontSize(8).font('Helvetica');
+      doc.text(
+        '本报告由智链技术服务系统自动生成 | 24小时服务热线：400-XXX-XXXX',
+        72,
+        pageHeight - 50,
+        { align: 'center', width: 451 }
+      );
 
       // 完成PDF
       doc.end();
@@ -216,4 +221,3 @@ async function generateTicketReport(ticket, reporter, technician) {
 module.exports = {
   generateTicketReport
 };
-
