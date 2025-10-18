@@ -560,8 +560,17 @@ const handleGenerateReport = async () => {
 
 // 下载报告
 const handleDownloadReport = () => {
-  const downloadUrl = `${API_BASE}/api/tickets/${ticketId}/download-report`
-  window.open(downloadUrl, '_blank')
+  // API_BASE 已经包含 /api 路径，不需要再添加
+  const downloadUrl = `${API_BASE}/tickets/${ticketId}/download-report`
+  
+  // 创建临时的 a 标签下载
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = `工单报告-${ticketId}.pdf`
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // 返回
